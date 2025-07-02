@@ -31,3 +31,7 @@ sqlparse>=0.4.4
 
 # Optional: Database GUI tools
 pgcli>=3.5.0  # PostgreSQL command line interface with autocomplete
+
+# Dashboard & Visualization (already have most)
+streamlit>=1.28.0
+plotly>=5.17.0
