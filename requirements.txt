@@ -1,0 +1,33 @@
+# Core dependencies - Essential for all functionality
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.23
+pandas>=2.1.0
+numpy>=1.24.0
+python-dotenv>=1.0.0
+faker>=20.0.0
+
+# Data visualization
+plotly>=5.17.0
+seaborn>=0.12.0
+matplotlib>=3.7.0
+
+# Web interface (for later phases)
+streamlit>=1.28.0
+dash>=2.14.0
+
+# Data validation & quality (optional for advanced features)
+great-expectations>=0.18.0
+pandera>=0.17.0
+
+# Development tools (optional)
+jupyter>=1.0.0
+ipython>=8.15.0
+
+# Database migrations (for advanced deployment)
+alembic>=1.12.0
+
+# Performance monitoring (for optimization phase)
+sqlparse>=0.4.4
+
+# Optional: Database GUI tools
+pgcli>=3.5.0  # PostgreSQL command line interface with autocomplete

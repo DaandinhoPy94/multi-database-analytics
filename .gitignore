@@ -1,0 +1,32 @@
+# Virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables (IMPORTANT - never commit passwords!)
+.env
+secrets.toml
+
+# Database files
+*.db
+*.sqlite3
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data files (generated)
+data/
+uploads/
+
+# Temporary files
+test_connection.py
