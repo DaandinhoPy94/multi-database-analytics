@@ -1,6 +1,6 @@
 """
-Working Analytics Dashboard
-Simplified version based on successful test
+Improved Analytics Dashboard
+Warning-free version with SQLAlchemy connections
 """
 
 import streamlit as st
@@ -8,11 +8,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import psycopg2
+from sqlalchemy import create_engine
 import os
 from dotenv import load_dotenv
-import warnings
-warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy connectable')
 
 # Load environment
 load_dotenv()
@@ -44,54 +42,49 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data
-def get_database_connection():
-    """Get database connection string"""
-    return os.getenv("SUPABASE_DATABASE_URL")
+def get_database_engine():
+    """Get SQLAlchemy database engine (fixes pandas warnings)"""
+    connection_string = os.getenv("SUPABASE_DATABASE_URL")
+    if not connection_string:
+        st.error("No SUPABASE_DATABASE_URL found in environment")
+        st.stop()
+    
+    # Create SQLAlchemy engine for pandas compatibility
+    engine = create_engine(
+        connection_string,
+        pool_timeout=30,
+        pool_recycle=300,
+        pool_pre_ping=True,
+        connect_args={
+            "connect_timeout": 30,
+            "application_name": "streamlit_dashboard"
+        }
+    )
+    return engine
 
 @st.cache_data
 def load_key_metrics():
     """Load key business metrics"""
-    conn_string = get_database_connection()
-    conn = psycopg2.connect(conn_string, connect_timeout=30)
+    engine = get_database_engine()
     
-    cursor = conn.cursor()
+    # Combine all metrics in one query for efficiency
+    query = """
+    SELECT 
+        (SELECT COUNT(*) FROM customers) as total_customers,
+        (SELECT COUNT(*) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')) as total_orders,
+        (SELECT COUNT(*) FROM products WHERE is_active = true) as active_products,
+        (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')) as total_revenue,
+        (SELECT COALESCE(AVG(total_amount), 0) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')) as avg_order_value,
+        (SELECT COUNT(DISTINCT customer_id) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')) as active_customers
+    """
     
-    # Key metrics
-    cursor.execute("SELECT COUNT(*) FROM customers")
-    total_customers = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')")
-    total_orders = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM products WHERE is_active = true")
-    active_products = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT SUM(total_amount) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')")
-    total_revenue = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT AVG(total_amount) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')")
-    avg_order_value = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(DISTINCT customer_id) FROM orders WHERE order_status IN ('confirmed', 'shipped', 'delivered')")
-    active_customers = cursor.fetchone()[0]
-    
-    conn.close()
-    
-    return {
-        'total_customers': total_customers,
-        'total_orders': total_orders,
-        'active_products': active_products,
-        'total_revenue': total_revenue,
-        'avg_order_value': avg_order_value,
-        'active_customers': active_customers
-    }
+    df = pd.read_sql_query(query, engine)
+    return df.iloc[0].to_dict()
 
 @st.cache_data
 def load_customer_data():
     """Load customer analytics data"""
-    conn_string = get_database_connection()
-    conn = psycopg2.connect(conn_string, connect_timeout=30)
+    engine = get_database_engine()
     
     query = """
     WITH customer_spending AS (
@@ -116,21 +109,18 @@ def load_customer_data():
         ROUND(total_spent, 2) as total_spent,
         ROW_NUMBER() OVER (ORDER BY total_spent DESC) as overall_rank,
         RANK() OVER (PARTITION BY customer_tier ORDER BY total_spent DESC) as rank_in_tier,
-        ROUND(total_spent * 100.0 / SUM(total_spent) OVER (), 2) as pct_of_total_revenue
+        ROUND(total_spent * 100.0 / NULLIF(SUM(total_spent) OVER (), 0), 2) as pct_of_total_revenue
     FROM customer_spending
     WHERE total_spent > 0
     ORDER BY total_spent DESC;
     """
     
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return df
+    return pd.read_sql_query(query, engine)
 
 @st.cache_data 
 def load_revenue_data():
     """Load revenue trends data"""
-    conn_string = get_database_connection()
-    conn = psycopg2.connect(conn_string, connect_timeout=30)
+    engine = get_database_engine()
     
     query = """
     WITH monthly_revenue AS (
@@ -157,15 +147,12 @@ def load_revenue_data():
     ORDER BY month;
     """
     
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return df
+    return pd.read_sql_query(query, engine)
 
 @st.cache_data
 def load_product_data():
     """Load product performance data"""
-    conn_string = get_database_connection()
-    conn = psycopg2.connect(conn_string, connect_timeout=30)
+    engine = get_database_engine()
     
     query = """
     SELECT 
@@ -189,9 +176,7 @@ def load_product_data():
     ORDER BY total_revenue DESC;
     """
     
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return df
+    return pd.read_sql_query(query, engine)
 
 def main():
     """Main dashboard"""
@@ -283,7 +268,10 @@ def main():
             st.markdown('<div class="insight-box">', unsafe_allow_html=True)
             st.markdown("**📊 Key Insights:**")
             st.markdown(f"• Latest month revenue: **€{latest['monthly_revenue']:,.2f}**")
-            st.markdown(f"• Month-over-month growth: **{latest['mom_growth_pct']:.1f}%**")
+            if pd.notna(latest['mom_growth_pct']):
+                st.markdown(f"• Month-over-month growth: **{latest['mom_growth_pct']:.1f}%**")
+            else:
+                st.markdown("• Month-over-month growth: **First month**")
             st.markdown(f"• Total business revenue: **€{latest['cumulative_revenue']:,.2f}**")
             st.markdown('</div>', unsafe_allow_html=True)
     
@@ -344,7 +332,9 @@ def main():
             st.markdown('<div class="insight-box">', unsafe_allow_html=True)
             st.markdown("**🎯 Customer Insights:**")
             st.markdown(f"• Top customer: **{top_customer['first_name']} {top_customer['last_name']}** (€{top_customer['total_spent']:,.2f})")
-            st.markdown(f"• Top 10 customers: **{customers_df.head(10)['pct_of_total_revenue'].sum():.1f}%** of total revenue")
+            if len(customers_df) >= 10:
+                top_10_pct = customers_df.head(10)['pct_of_total_revenue'].sum()
+                st.markdown(f"• Top 10 customers: **{top_10_pct:.1f}%** of total revenue")
             st.markdown('</div>', unsafe_allow_html=True)
     
     with tab3:
@@ -397,8 +387,13 @@ def main():
             st.markdown('<div class="insight-box">', unsafe_allow_html=True)
             st.markdown("**💡 Product Insights:**")
             st.markdown(f"• Top product: **{top_product['product_name']}** (€{top_product['total_revenue']:,.2f})")
-            apple_revenue = products_df[products_df['brand'] == 'Apple']['pct_of_total_revenue'].sum()
-            st.markdown(f"• Apple products: **{apple_revenue:.1f}%** of total revenue")
+            
+            # Check for Apple products
+            apple_products = products_df[products_df['brand'] == 'Apple']
+            if not apple_products.empty:
+                apple_revenue = apple_products['pct_of_total_revenue'].sum()
+                st.markdown(f"• Apple products: **{apple_revenue:.1f}%** of total revenue")
+            
             st.markdown('</div>', unsafe_allow_html=True)
     
     # Footer
