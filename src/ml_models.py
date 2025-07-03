@@ -37,14 +37,14 @@ class CustomerChurnPredictor:
             SELECT 
                 c.customer_id,
                 c.customer_tier,
-                EXTRACT(DAYS FROM (CURRENT_DATE - c.registration_date)) as days_since_registration,
+                (CURRENT_DATE - c.registration_date) as days_since_registration,
                 
                 -- Order behavior features
                 COALESCE(COUNT(o.order_id), 0) as total_orders,
                 COALESCE(SUM(o.total_amount), 0) as total_spent,
                 COALESCE(AVG(o.total_amount), 0) as avg_order_value,
                 COALESCE(MAX(o.order_date), c.registration_date) as last_order_date,
-                EXTRACT(DAYS FROM (CURRENT_DATE - COALESCE(MAX(o.order_date), c.registration_date))) as days_since_last_order,
+                (CURRENT_DATE - COALESCE(MAX(o.order_date), c.registration_date)) as days_since_last_order,
                 
                 -- Recent activity (last 90 days)
                 COUNT(CASE WHEN o.order_date >= CURRENT_DATE - INTERVAL '90 days' THEN 1 END) as orders_last_90_days,
@@ -110,9 +110,11 @@ class CustomerChurnPredictor:
             'order_frequency', 'recent_activity_ratio', 'spending_per_day'
         ]
         
-        # Handle any missing values
+        # Ensure all features exist and are numeric
         for col in self.feature_columns:
-            df[col] = df[col].fillna(0)
+            if col not in df.columns:
+                df[col] = 0
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         
         print(f"✅ Feature engineering complete. Using {len(self.feature_columns)} features")
         return df
