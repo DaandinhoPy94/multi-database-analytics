@@ -1,0 +1,33 @@
+# Docker Compose for Local Development and Testing
+# Run with: docker-compose up --build
+
+version: '3.8'
+
+services:
+  ai-analytics:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - SUPABASE_DATABASE_URL=${SUPABASE_DATABASE_URL}
+      - ENVIRONMENT=production
+      - DEBUG=False
+    volumes:
+      # Mount models directory for persistent ML models
+      - ./models:/app/models
+      # Mount for live code changes during development
+      - ./src:/app/src
+    restart: unless-stopped
+    
+  # Optional: Add a reverse proxy for production-like setup
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ai-analytics
+    restart: unless-stopped
+    profiles:
+      - production

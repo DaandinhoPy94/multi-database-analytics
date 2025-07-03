@@ -1,0 +1,60 @@
+# .dockerignore - Exclude files from Docker build context
+# This optimizes build speed and reduces image size
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment files (will be injected at runtime)
+.env
+.env.local
+.env.production
+
+# Development and testing files
+test_*.py
+debug_*.py
+*_backup.py
+*_test.py
+
+# Documentation and readme
+README.md
+docs/
+*.md
+
+# Git
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data files (should be in database)
+data/
+uploads/
+*.csv
+*.xlsx
+*.json
+
+# Logs
+*.log
+logs/
+
+# Docker files (no need to include in image)
+Dockerfile
+docker-compose.yml
+.dockerignore
