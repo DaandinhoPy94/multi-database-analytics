@@ -3,7 +3,6 @@ AI-Enhanced Analytics Dashboard
 Machine Learning Integration with Real-time Predictions
 """
 
-import json
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -281,40 +280,7 @@ def create_churn_risk_chart(predictions_df):
     
     return fig
 
-def create_api_endpoint():
-    """API endpoint for iOS app"""
-    # Check if this is an API request
-    if 'api' in st.query_params and st.query_params['api'] == 'dashboard':
-        
-        # Get your current dashboard data
-        try:
-            metrics = load_key_metrics()
-            
-            # Create JSON response for iOS
-            api_response = {
-                "revenueForecast": float(metrics['total_revenue']),
-                "modelAccuracy": 0.982,  # Your ML model accuracy
-                "activeCustomers": int(metrics['active_customers']),
-                "predictionsToday": 342,  # Mock for now
-                "lastUpdated": "2025-07-11T00:30:00Z",
-                "status": "live"
-            }
-            
-            # Return JSON and stop normal Streamlit rendering
-            st.json(api_response)
-            st.stop()
-            
-        except Exception as e:
-            error_response = {
-                "error": "Failed to load data",
-                "message": str(e),
-                "status": "error"
-            }
-            st.json(error_response)
-            st.stop()
-
 def main():
-    create_api_endpoint()
     """Main AI-enhanced dashboard"""
     
     # Header with AI styling
