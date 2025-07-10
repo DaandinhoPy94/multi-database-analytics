@@ -18,6 +18,15 @@ import joblib
 import warnings
 warnings.filterwarnings('ignore')
 
+# SIMPLE API TEST - Add this at the very top, before all other code
+if st.query_params.get("test") == "api":
+    st.write(json.dumps({
+        "message": "Hello from Railway!", 
+        "timestamp": "2025-07-11T00:30:00Z", 
+        "status": "working"
+    }))
+    st.stop()
+
 # Load environment
 load_dotenv()
 
