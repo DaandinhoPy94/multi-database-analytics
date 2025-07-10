@@ -5,6 +5,7 @@ Machine Learning Integration with Real-time Predictions
 
 import json
 import streamlit as st
+import sys
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -17,6 +18,53 @@ from src.ml_models import CustomerChurnPredictor, get_ml_insights
 import joblib
 import warnings
 warnings.filterwarnings('ignore')
+
+# Check for API mode BEFORE any streamlit setup
+if len(sys.argv) > 1 and sys.argv[1] == "api":
+    # Pure JSON output
+    response = {
+        "message": "Hello from Railway!",
+        "timestamp": "2025-07-11T00:30:00Z", 
+        "status": "working"
+    }
+    print(json.dumps(response))
+    sys.exit(0)
+
+# Alternative: Check URL manually
+try:
+    # Get URL parameters
+    import urllib.parse as urlparse
+    import os
+    
+    # Check if we're in API mode via environment or special handling
+    if st.query_params.get("format") == "json":
+        st.set_page_config(page_title="API", layout="centered")
+        
+        # Create simple JSON response
+        api_data = {
+            "revenueForecast": 125000.0,
+            "modelAccuracy": 0.982,
+            "activeCustomers": 1247,
+            "predictionsToday": 342,
+            "lastUpdated": "2025-07-11T00:30:00Z",
+            "status": "live"
+        }
+        
+        # Output as text instead of using st.json()
+        st.text(json.dumps(api_data))
+        st.stop()
+        
+except Exception as e:
+    pass  # Continue with normal app
+
+# Your normal page config
+st.set_page_config(
+    page_title="AI Analytics Dashboard", 
+    page_icon="🤖", 
+    layout="wide"
+)
+
+# Rest of your code continues...
 
 # SIMPLE API TEST - Add this at the very top, before all other code
 if st.query_params.get("test") == "api":
